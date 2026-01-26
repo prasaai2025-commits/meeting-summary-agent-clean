@@ -1,7 +1,7 @@
+
 services:
   - type: web
     name: meeting-summary-agent
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python app/main.py
-

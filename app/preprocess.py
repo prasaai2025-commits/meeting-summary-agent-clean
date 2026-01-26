@@ -1,4 +1,3 @@
-
 def chunk_text(text, max_words=800):
     words = text.split()
     chunks = []
