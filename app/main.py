@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
-from app.agent import run_agent
+from agent import run_agent
 import os, shutil
 
 app = FastAPI()
