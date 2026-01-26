@@ -1,0 +1,5 @@
+meeting/
+uploads/
+outputs/
+__pycache__/
+*.pyc
