@@ -1,4 +1,4 @@
-from preprocess import chunk_text
+from app.preprocess import chunk_text
 from faster_whisper import WhisperModel
 from docx import Document
 from fpdf import FPDF
@@ -40,8 +40,6 @@ def save_outputs(summary: str, name: str):
 def run_agent(file_path: str):
     text = transcribe_audio(file_path)
     summary = summarize_text(text)
-
     name = os.path.splitext(os.path.basename(file_path))[0]
     save_outputs(summary, name)
-
     return name
