@@ -3,6 +3,4 @@ uvicorn
 python-multipart
 faster-whisper
 python-docx
-fpdf
-
-
+reportlab

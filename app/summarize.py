@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from app.preprocess import chunk_text
 
 DATE_PATTERN = r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{4})\b"
 AMOUNT_PATTERN = r"(₹|\$|INR|USD)\s?\d+(?:,\d+)*(?:\.\d+)?"
@@ -19,11 +20,7 @@ def clean(sentence: str) -> str:
 def format_section(symbol, items, limit=8):
     if not items:
         return f"{symbol} None identified.\n\n"
-
-    return "\n".join(
-        f"{symbol} {clean(item)}"
-        for item in items[:limit]
-    ) + "\n\n"
+    return "\n".join(f"{symbol} {clean(item)}" for item in items[:limit]) + "\n\n"
 
 def summarize_text(transcript: str) -> str:
     sentences = re.split(r"[.\n]", transcript)
@@ -36,22 +33,16 @@ def summarize_text(transcript: str) -> str:
 
         if re.search(DATE_PATTERN, s):
             data["dates"].append(s)
-
         if re.search(AMOUNT_PATTERN, s):
             data["amounts"].append(s)
-
         if any(k in s_lower for k in DECISION_KEYWORDS):
             data["decisions"].append(s)
-
         if any(k in s_lower for k in ACTION_KEYWORDS):
             data["actions"].append(s)
-
         if any(k in s_lower for k in IDEA_KEYWORDS):
             data["ideas"].append(s)
-
         if any(k in s_lower for k in RISK_KEYWORDS):
             data["risks"].append(s)
-
         if any(k in s_lower for k in EQUIPMENT_KEYWORDS):
             data["equipment"].append(s)
 
@@ -100,5 +91,4 @@ PROFESSIONAL MEETING SUMMARY
 ✔ Monitor identified risks and mitigation plans.
 ✔ Schedule the next review or follow-up meeting.
 """
-
     return summary.strip()

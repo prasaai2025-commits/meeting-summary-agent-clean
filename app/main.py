@@ -32,10 +32,8 @@ async def upload(file: UploadFile = File(...)):
 
 @app.get("/download/docx/{name}")
 def download_docx(name: str):
-    path = f"app/outputs/{name}.docx"
-    return FileResponse(path, filename=f"{name}.docx")
+    return FileResponse(f"app/outputs/{name}.docx", filename=f"{name}.docx")
 
 @app.get("/download/pdf/{name}")
 def download_pdf(name: str):
-    path = f"app/outputs/{name}.pdf"
-    return FileResponse(path, filename=f"{name}.pdf")
+    return FileResponse(f"app/outputs/{name}.pdf", filename=f"{name}.pdf")
