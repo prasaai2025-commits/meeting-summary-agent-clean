@@ -1,6 +1,8 @@
+
+faster-whisper
 fastapi
 uvicorn
 python-multipart
-faster-whisper
+fpdf
 python-docx
 reportlab

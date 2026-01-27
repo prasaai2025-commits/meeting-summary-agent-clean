@@ -7,9 +7,6 @@ model = WhisperModel("base", device="cpu", compute_type="int8")
 def extract_audio(video_path: str) -> str:
     audio_path = video_path.rsplit(".", 1)[0] + ".wav"
 
-    if os.path.exists(audio_path):
-        return audio_path
-
     subprocess.run([
         "ffmpeg", "-y",
         "-i", video_path,
