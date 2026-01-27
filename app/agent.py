@@ -9,6 +9,8 @@ def run_agent(file_path: str):
 
     name = os.path.splitext(os.path.basename(file_path))[0]
 
+    os.makedirs("app/outputs", exist_ok=True)
+
     save_docx(summary, f"app/outputs/{name}.docx")
     save_pdf(summary, f"app/outputs/{name}.pdf")
 

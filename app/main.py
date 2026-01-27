@@ -13,7 +13,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 @app.get("/")
 def home():
-    return FileResponse("app/templates/index.html")
+    return {"status": "Meeting Summary Agent Running"}
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):

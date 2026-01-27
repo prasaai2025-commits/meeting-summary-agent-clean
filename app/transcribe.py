@@ -1,5 +1,4 @@
 from faster_whisper import WhisperModel
-import os
 
 model = WhisperModel("base", device="cpu", compute_type="int8")
 
