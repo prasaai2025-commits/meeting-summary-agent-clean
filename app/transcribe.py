@@ -1,3 +1,4 @@
+
 import speech_recognition as sr
 
 def transcribe_audio(file_path: str) -> str:
