@@ -1,8 +1,8 @@
-import whisper
+from faster_whisper import WhisperModel
 import subprocess
 import os
 
-model = whisper.load_model("base")
+model = WhisperModel("base", device="cpu", compute_type="int8")
 
 def extract_audio(video_path: str) -> str:
     audio_path = video_path.rsplit(".", 1)[0] + ".wav"
@@ -21,8 +21,8 @@ def extract_audio(video_path: str) -> str:
     return audio_path
 
 def transcribe_audio(path: str) -> str:
-    if path.lower().endswith((".mp4", ".mkv", ".avi")):
+    if path.lower().endswith((".mp4", ".mkv", ".avi", ".mov")):
         path = extract_audio(path)
 
-    result = model.transcribe(path)
-    return result["text"]
+    segments, _ = model.transcribe(path)
+    return " ".join(seg.text for seg in segments)

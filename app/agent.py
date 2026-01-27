@@ -1,14 +1,7 @@
-from app.preprocess import chunk_text
+from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
-from faster_whisper import WhisperModel
 from app.utils import save_docx, save_pdf
 import os
-
-model = WhisperModel("base", device="cpu", compute_type="int8")
-
-def transcribe_audio(file_path: str) -> str:
-    segments, _ = model.transcribe(file_path)
-    return " ".join(seg.text for seg in segments)
 
 def run_agent(file_path: str):
     text = transcribe_audio(file_path)
