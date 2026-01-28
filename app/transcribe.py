@@ -4,15 +4,15 @@ import os
 import math
 import uuid
 
-# FASTEST model for long meetings
+# FAST + LIGHT model (best for Render CPU)
 model = WhisperModel(
     "tiny",
     device="cpu",
     compute_type="int8"
 )
 
-# smaller chunks = faster + safer for long files
-CHUNK_SECONDS = 120  # 2 minutes
+# chunk size = 2 minutes (safe + fast)
+CHUNK_SECONDS = 120
 
 
 def extract_audio(video_path: str) -> str:
@@ -71,13 +71,11 @@ def split_audio(path: str):
 
 
 def transcribe_audio(path: str) -> str:
-    # if video → convert to audio
+    # convert video to audio if needed
     if path.lower().endswith((".mp4", ".mkv", ".avi", ".mov")):
         path = extract_audio(path)
 
-    # split audio into chunks
     chunks = split_audio(path)
-
     full_text = ""
 
     for chunk in chunks:
@@ -92,6 +90,6 @@ def transcribe_audio(path: str) -> str:
         for segment in segments:
             full_text += segment.text + " "
 
-        os.remove(chunk)  # cleanup temp chunk
+        os.remove(chunk)
 
     return full_text.strip()
