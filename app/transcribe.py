@@ -11,7 +11,7 @@ model = WhisperModel(
     compute_type="int8"
 )
 
-# chunk size = 2 minutes (safe + fast)
+# chunk size = 2 minutes
 CHUNK_SECONDS = 120
 
 
