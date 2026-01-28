@@ -4,5 +4,4 @@ python-multipart
 fpdf
 python-docx
 reportlab
-SpeechRecognition
-pydub
+faster-whisper

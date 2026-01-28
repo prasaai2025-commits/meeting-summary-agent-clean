@@ -1,14 +1,10 @@
-import speech_recognition as sr
+from faster_whisper import WhisperModel
+
+model = WhisperModel("base", device="cpu", compute_type="int8")
 
 def transcribe_audio(file_path: str) -> str:
-    r = sr.Recognizer()
-
-    with sr.AudioFile(file_path) as source:
-        audio = r.record(source)
-
-    try:
-        text = r.recognize_google(audio)
-    except Exception as e:
-        text = "Transcription failed: " + str(e)
-
-    return text
+    segments, info = model.transcribe(file_path)
+    text = ""
+    for segment in segments:
+        text += segment.text + " "
+    return text.strip()
