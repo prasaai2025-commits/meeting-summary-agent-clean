@@ -4,40 +4,61 @@ from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+CHUNK_SECONDS = 300  # 5 minutes
+
 def extract_audio(video_path: str) -> str:
     audio_path = video_path.rsplit(".", 1)[0] + ".wav"
-
     if os.path.exists(audio_path):
         return audio_path
 
-    # Convert video to 16kHz mono wav (best for Whisper)
     subprocess.run(
         ["ffmpeg", "-y", "-i", video_path, "-ar", "16000", "-ac", "1", audio_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
         check=True
     )
-
     return audio_path
 
 
-def transcribe_audio(file_path: str) -> str:
-    """
-    Transcribe audio/video using OpenAI Whisper API (FAST).
-    """
+def split_audio(audio_path: str):
+    chunks_dir = audio_path + "_chunks"
+    os.makedirs(chunks_dir, exist_ok=True)
 
-    # If video → extract audio first
+    chunk_files = []
+    i = 0
+
+    while True:
+        out = os.path.join(chunks_dir, f"chunk_{i}.wav")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", audio_path,
+            "-ss", str(i * CHUNK_SECONDS),
+            "-t", str(CHUNK_SECONDS),
+            out
+        ]
+        subprocess.run(cmd, stderr=subprocess.DEVNULL)
+
+        if not os.path.exists(out) or os.path.getsize(out) < 1000:
+            break
+
+        chunk_files.append(out)
+        i += 1
+
+    return chunk_files
+
+
+def transcribe_audio(file_path: str) -> str:
     if file_path.lower().endswith((".mp4", ".mkv", ".avi", ".mov", ".webm")):
         file_path = extract_audio(file_path)
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
+    chunks = split_audio(file_path)
 
-    with open(file_path, "rb") as audio_file:
-        response = client.audio.transcriptions.create(
-            model="gpt-4o-transcribe",
-            file=audio_file,
-            response_format="text"
-        )
+    full_text = []
+    for idx, chunk in enumerate(chunks):
+        with open(chunk, "rb") as f:
+            text = client.audio.transcriptions.create(
+                model="gpt-4o-transcribe",
+                file=f,
+                response_format="text"
+            )
+        full_text.append(text)
 
-    return response
+    return "\n".join(full_text)

@@ -1,74 +1,53 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
+import threading, os, uuid
+
 from app.agent import run_agent
-import os, shutil, uuid
+
+STATUS_DIR = "status"
+UPLOAD_DIR = "uploads"
+
+os.makedirs(STATUS_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI()
 
-UPLOAD_DIR = "app/uploads"
-OUTPUT_DIR = "app/outputs"
-STATUS_DIR = "app/status"
-
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(STATUS_DIR, exist_ok=True)
-
-@app.get("/")
-def home():
-    return {"status": "Meeting Summary Agent Running"}
-
-def process_job(job_id: str, path: str):
+def background_job(path, job_id):
+    status_path = f"{STATUS_DIR}/{job_id}.txt"
     try:
-        name = run_agent(path)
-        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+        result = run_agent(path, job_id)
+        with open(status_path, "w") as f:
             f.write("done")
     except Exception as e:
-        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-            f.write(f"error:{str(e)}")
+        with open(status_path, "w") as f:
+            f.write("error")
 
-@app.post("/upload")
-async def upload(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
-):
+
+@app.post("/generate")
+async def generate(file: UploadFile = File(...)):
     job_id = str(uuid.uuid4())
-    path = os.path.join(UPLOAD_DIR, f"{job_id}_{file.filename}")
+    file_path = f"{UPLOAD_DIR}/{job_id}_{file.filename}"
 
-    with open(path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
 
     with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
         f.write("processing")
 
-    background_tasks.add_task(process_job, job_id, path)
+    threading.Thread(
+        target=background_job,
+        args=(file_path, job_id),
+        daemon=True
+    ).start()
 
-    return {
-        "job_id": job_id,
-        "status": "processing"
-    }
+    return JSONResponse({"job_id": job_id})
+
 
 @app.get("/status/{job_id}")
-def job_status(job_id: str):
+def status(job_id: str):
     status_file = f"{STATUS_DIR}/{job_id}.txt"
     if not os.path.exists(status_file):
         return {"status": "unknown"}
 
     with open(status_file) as f:
-        status = f.read()
-
-    if status == "done":
-        return {
-            "status": "done",
-            "docx": f"/download/docx/{job_id}",
-            "pdf": f"/download/pdf/{job_id}"
-        }
-
-    return {"status": status}
-
-@app.get("/download/docx/{job_id}")
-def download_docx(job_id: str):
-    return FileResponse(f"app/outputs/{job_id}.docx")
-
-@app.get("/download/pdf/{job_id}")
-def download_pdf(job_id: str):
-    return FileResponse(f"app/outputs/{job_id}.pdf")
+        return {"status": f.read()}

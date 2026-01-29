@@ -1,17 +1,13 @@
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
-from app.utils import save_docx, save_pdf
-import os
 
-def run_agent(file_path: str):
-    text = transcribe_audio(file_path)
-    summary = summarize_text(text)
+def run_agent(path, job_id):
+    text = transcribe_audio(path)
 
-    name = os.path.basename(file_path).split("_", 1)[0]
+    # Stage 1: compress transcript
+    compressed = summarize_text(text, mode="compress")
 
-    os.makedirs("app/outputs", exist_ok=True)
+    # Stage 2: professional summary
+    final = summarize_text(compressed, mode="final")
 
-    save_docx(summary, f"app/outputs/{name}.docx")
-    save_pdf(summary, f"app/outputs/{name}.pdf")
-
-    return name
+    return final
