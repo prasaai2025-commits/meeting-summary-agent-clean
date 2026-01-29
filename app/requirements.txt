@@ -1,7 +1,7 @@
+openai
 fastapi
 uvicorn
 python-multipart
 fpdf
 python-docx
 reportlab
-faster-whisper
