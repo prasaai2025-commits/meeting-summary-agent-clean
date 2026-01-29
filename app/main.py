@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-import threading, os, uuid
+import threading, os, uuid, json
 
 from app.agent import run_agent
 
@@ -15,12 +15,24 @@ app = FastAPI()
 def background_job(path, job_id):
     status_path = f"{STATUS_DIR}/{job_id}.txt"
     try:
-        result = run_agent(path, job_id)
         with open(status_path, "w") as f:
-            f.write("done")
+            f.write("transcribing")
+
+        result = run_agent(path, job_id)
+
+        # ✅ write FINAL result as JSON
+        with open(status_path, "w") as f:
+            f.write(json.dumps({
+                "status": "done",
+                "outputs": result
+            }))
+
     except Exception as e:
         with open(status_path, "w") as f:
-            f.write("error")
+            f.write(json.dumps({
+                "status": "error",
+                "message": str(e)
+            }))
 
 
 @app.post("/generate")
@@ -32,7 +44,7 @@ async def generate(file: UploadFile = File(...)):
         f.write(await file.read())
 
     with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-        f.write("processing")
+        f.write("queued")
 
     threading.Thread(
         target=background_job,
@@ -50,4 +62,4 @@ def status(job_id: str):
         return {"status": "unknown"}
 
     with open(status_file) as f:
-        return {"status": f.read()}
+        return json.loads(f.read())
