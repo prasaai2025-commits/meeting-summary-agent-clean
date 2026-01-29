@@ -1,38 +1,25 @@
-import os
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
 from app.utils import save_docx, save_pdf
 
-OUTPUT_DIR = "outputs"
-STATUS_DIR = "status"
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(STATUS_DIR, exist_ok=True)
-
-def run_agent(file_path: str, job_id: str) -> str:
-    status_path = f"{STATUS_DIR}/{job_id}.txt"
-
-    def update(msg):
-        with open(status_path, "w") as f:
-            f.write(msg)
-
+def run_agent(path, job_id):
     try:
-        update("transcribing")
-        transcript = transcribe_audio(file_path)
+        with open(f"status/{job_id}.txt", "w") as f:
+            f.write("transcribing")
 
-        update("summarizing")
-        summary = summarize_text(transcript)
+        text = transcribe_audio(path)
 
-        docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
-        pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
+        with open(f"status/{job_id}.txt", "w") as f:
+            f.write("summarizing")
 
-        update("saving_files")
-        save_docx(summary, docx_path)
-        save_pdf(summary, pdf_path)
+        summary = summarize_text(text)
 
-        update("completed")
-        return "completed"
+        save_docx(summary, f"outputs/{job_id}.docx")
+        save_pdf(summary, f"outputs/{job_id}.pdf")
+
+        with open(f"status/{job_id}.txt", "w") as f:
+            f.write("completed")
 
     except Exception as e:
-        update(f"error: {str(e)}")
-        return "error"
+        with open(f"status/{job_id}.txt", "w") as f:
+            f.write(f"error: {e}")
