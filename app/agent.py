@@ -1,28 +1,38 @@
-
+import os
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
 from app.utils import save_docx, save_pdf
-import os
 
 OUTPUT_DIR = "outputs"
+STATUS_DIR = "status"
+
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(STATUS_DIR, exist_ok=True)
 
-def run_agent(path, job_id):
-    # 1. Transcribe
-    text = transcribe_audio(path)
+def run_agent(file_path: str, job_id: str) -> str:
+    status_path = f"{STATUS_DIR}/{job_id}.txt"
 
-    # 2. Summarize
-    summary = summarize_text(text)
+    def update(msg):
+        with open(status_path, "w") as f:
+            f.write(msg)
 
-    # 3. Save outputs
-    docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
-    pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
+    try:
+        update("transcribing")
+        transcript = transcribe_audio(file_path)
 
-    save_docx(summary, docx_path)
-    save_pdf(summary, pdf_path)
+        update("summarizing")
+        summary = summarize_text(transcript)
 
-    # 4. Return file paths (IMPORTANT)
-    return {
-        "docx": docx_path,
-        "pdf": pdf_path
-    }
+        docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
+        pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
+
+        update("saving_files")
+        save_docx(summary, docx_path)
+        save_pdf(summary, pdf_path)
+
+        update("completed")
+        return "completed"
+
+    except Exception as e:
+        update(f"error: {str(e)}")
+        return "error"
