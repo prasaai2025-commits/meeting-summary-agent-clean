@@ -10,9 +10,10 @@ IDEA_KEYWORDS = ["idea", "proposal", "suggested"]
 RISK_KEYWORDS = ["risk", "issue", "problem"]
 EQUIPMENT_KEYWORDS = ["software", "tool", "system", "equipment"]
 
-def summarize_text(transcript: str) -> str:
-    sentences = re.split(r"[.\n]", transcript)
-    data = defaultdict(list)
+CHUNK_SIZE = 4000  # characters per chunk (fast + safe)
+
+def process_chunk(text, data):
+    sentences = re.split(r"[.\n]", text)
 
     for s in sentences:
         s = s.strip()
@@ -29,6 +30,15 @@ def summarize_text(transcript: str) -> str:
         if any(k in sl for k in EQUIPMENT_KEYWORDS): data["equipment"].append(s)
 
         data["discussion"].append(s)
+
+
+def summarize_text(transcript: str) -> str:
+    data = defaultdict(list)
+
+    # ---- FAST MODE: chunk the transcript ----
+    for i in range(0, len(transcript), CHUNK_SIZE):
+        chunk = transcript[i:i+CHUNK_SIZE]
+        process_chunk(chunk, data)
 
     def fmt(title, items):
         if not items:
