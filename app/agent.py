@@ -7,7 +7,8 @@ def run_agent(file_path: str):
     text = transcribe_audio(file_path)
     summary = summarize_text(text)
 
-    name = os.path.splitext(os.path.basename(file_path))[0]
+    name = os.path.basename(file_path).split("_", 1)[0]
+
     os.makedirs("app/outputs", exist_ok=True)
 
     save_docx(summary, f"app/outputs/{name}.docx")
