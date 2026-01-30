@@ -23,10 +23,12 @@ async def upload(
     job_id = str(uuid.uuid4())
     file_path = f"{UPLOAD_DIR}/{job_id}_{file.filename}"
 
+    # ✅ STREAM FILE (prevents 502)
     with open(file_path, "wb") as f:
-        f.write(await file.read())
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
 
-    # schedule background job (non-blocking)
+    # run in background
     background_tasks.add_task(run_agent, job_id, file_path)
 
     return {
@@ -37,11 +39,25 @@ async def upload(
 
 @app.get("/status/{job_id}")
 def get_status(job_id: str):
-    try:
-        with open(f"{STATUS_DIR}/{job_id}.txt") as f:
-            return {"status": f.read()}
-    except FileNotFoundError:
-        return {"status": "unknown"}
+    status_file = f"{STATUS_DIR}/{job_id}.txt"
+
+    if not os.path.exists(status_file):
+        return {"status": "processing"}
+
+    with open(status_file) as f:
+        status = f.read().strip()
+
+    if status == "COMPLETED":
+        return {
+            "status": "done",
+            "docx": f"/download/{job_id}/docx",
+            "pdf": f"/download/{job_id}/pdf",
+        }
+
+    if status == "ERROR":
+        return {"status": "error"}
+
+    return {"status": "processing"}
 
 
 @app.get("/download/{job_id}/{fmt}")
