@@ -1,25 +1,35 @@
+import os
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
 from app.utils import save_docx, save_pdf
 
-def run_agent(path, job_id):
+OUTPUT_DIR = "outputs"
+STATUS_DIR = "status"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def run_agent(path: str, job_id: str):
+    status_file = f"{STATUS_DIR}/{job_id}.txt"
+
     try:
-        with open(f"status/{job_id}.txt", "w") as f:
+        with open(status_file, "w") as f:
             f.write("transcribing")
 
-        text = transcribe_audio(path)
+        transcript = transcribe_audio(path)
 
-        with open(f"status/{job_id}.txt", "w") as f:
+        with open(status_file, "w") as f:
             f.write("summarizing")
 
-        summary = summarize_text(text)
+        summary = summarize_text(transcript)
 
-        save_docx(summary, f"outputs/{job_id}.docx")
-        save_pdf(summary, f"outputs/{job_id}.pdf")
+        docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
+        pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
 
-        with open(f"status/{job_id}.txt", "w") as f:
+        save_docx(summary, docx_path)
+        save_pdf(summary, pdf_path)
+
+        with open(status_file, "w") as f:
             f.write("completed")
 
     except Exception as e:
-        with open(f"status/{job_id}.txt", "w") as f:
-            f.write(f"error: {e}")
+        with open(status_file, "w") as f:
+            f.write(f"error:{str(e)}")

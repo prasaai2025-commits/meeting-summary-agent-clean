@@ -88,7 +88,6 @@
 
     <div id="out"></div>
   </div>
-
 <script>
 async function upload() {
   const file = document.getElementById("file").files[0];
@@ -97,21 +96,54 @@ async function upload() {
   const fd = new FormData();
   fd.append("file", file);
 
-  document.getElementById("out").innerHTML = "⏳ Processing meeting data...";
+  document.getElementById("out").innerHTML =
+    "⏳ Uploading & processing… please wait";
 
   const res = await fetch("/upload", {
     method: "POST",
     body: fd
   });
 
-  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById("out").innerHTML =
+      "❌ Upload failed. Please retry.";
+    return;
+  }
 
-  document.getElementById("out").innerHTML = `
-    <a href="${data.docx}" target="_blank">📄 Download DOCX Summary</a>
-    <a href="${data.pdf}" target="_blank">📕 Download PDF Summary</a>
-  `;
+  const { job_id } = await res.json();
+
+  pollStatus(job_id);
+}
+
+async function pollStatus(jobId) {
+  const out = document.getElementById("out");
+
+  const timer = setInterval(async () => {
+    const res = await fetch(`/status/${jobId}`);
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    if (data.status === "processing") {
+      out.innerHTML = "⏳ Processing meeting data…";
+    }
+
+    if (data.status === "done") {
+      clearInterval(timer);
+      out.innerHTML = `
+        <a href="${data.docx}" target="_blank">📄 Download DOCX</a>
+        <a href="${data.pdf}" target="_blank">📕 Download PDF</a>
+      `;
+    }
+
+    if (data.status === "error") {
+      clearInterval(timer);
+      out.innerHTML = "❌ Processing failed. Try again.";
+    }
+  }, 5000);
 }
 </script>
+
 
 </body>
 </html>
