@@ -17,8 +17,8 @@ os.makedirs(STATUS_DIR, exist_ok=True)
 
 @app.post("/upload")
 async def upload(
-    file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = BackgroundTasks()
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
 ):
     job_id = str(uuid.uuid4())
     file_path = f"{UPLOAD_DIR}/{job_id}_{file.filename}"
@@ -26,6 +26,7 @@ async def upload(
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
+    # schedule background job (non-blocking)
     background_tasks.add_task(run_agent, job_id, file_path)
 
     return {
