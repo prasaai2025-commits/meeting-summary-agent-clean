@@ -1,33 +1,31 @@
 import os
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
-from app.utils import generate_docx, generate_pdf
+from app.utils import create_docx, create_pdf
 
-BASE_DIR = os.path.dirname(__file__)
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
-STATUS_DIR = os.path.join(BASE_DIR, "status")
+STATUS_DIR = "status"
+OUTPUT_DIR = "outputs"
 
 
-def run_agent(file_path: str, job_id: str):
-    try:
-        # 1️⃣ Transcribe
-        transcript = transcribe_audio(file_path)
+def run_agent(job_id: str, file_path: str):
+    os.makedirs(STATUS_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-        # 2️⃣ Summarize
-        summary = summarize_text(transcript)
+    with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+        f.write("TRANSCRIBING")
 
-        # 3️⃣ Generate files
-        docx_path = generate_docx(summary, job_id)
-        pdf_path = generate_pdf(summary, job_id)
+    transcript = transcribe_audio(file_path)
 
-        # 4️⃣ WRITE FINAL STATUS
-        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-            f.write(str({
-                "status": "done",
-                "docx": f"/outputs/{os.path.basename(docx_path)}",
-                "pdf": f"/outputs/{os.path.basename(pdf_path)}"
-            }))
+    with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+        f.write("SUMMARIZING")
 
-    except Exception as e:
-        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-            f.write(str({"status": "error"}))
+    summary = summarize_text(transcript)
+
+    docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
+    pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
+
+    create_docx(summary, docx_path)
+    create_pdf(summary, pdf_path)
+
+    with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+        f.write("COMPLETED")

@@ -1,54 +1,51 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-import os, uuid, threading
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi.responses import FileResponse
+import uuid, os
 
 from app.agent import run_agent
 
 app = FastAPI()
 
-BASE_DIR = os.path.dirname(__file__)
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
-STATUS_DIR = os.path.join(BASE_DIR, "status")
+UPLOAD_DIR = "uploads"
+OUTPUT_DIR = "outputs"
+STATUS_DIR = "status"
 
-for d in [UPLOAD_DIR, OUTPUT_DIR, STATUS_DIR]:
-    os.makedirs(d, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(STATUS_DIR, exist_ok=True)
 
 
-# -------------------------
-# UPLOAD ENDPOINT
-# -------------------------
 @app.post("/upload")
-def upload(file: UploadFile = File(...)):
+async def upload(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
     job_id = str(uuid.uuid4())
-    file_path = os.path.join(UPLOAD_DIR, f"{job_id}_{file.filename}")
+    file_path = f"{UPLOAD_DIR}/{job_id}_{file.filename}"
 
     with open(file_path, "wb") as f:
-        f.write(file.file.read())
+        f.write(await file.read())
 
-    # mark job as processing
-    with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-        f.write("processing")
+    background_tasks.add_task(run_agent, job_id, file_path)
 
-    # run agent in BACKGROUND THREAD
-    threading.Thread(
-        target=run_agent,
-        args=(file_path, job_id),
-        daemon=True
-    ).start()
-
-    return {"job_id": job_id}
+    return {
+        "job_id": job_id,
+        "status": "processing"
+    }
 
 
-# -------------------------
-# STATUS ENDPOINT (YOU ASKED ABOUT THIS)
-# -------------------------
 @app.get("/status/{job_id}")
-def status(job_id: str):
-    path = f"{STATUS_DIR}/{job_id}.txt"
-
-    if not os.path.exists(path):
+def get_status(job_id: str):
+    try:
+        with open(f"{STATUS_DIR}/{job_id}.txt") as f:
+            return {"status": f.read()}
+    except FileNotFoundError:
         return {"status": "unknown"}
 
-    with open(path) as f:
-        return JSONResponse(content=eval(f.read()))
+
+@app.get("/download/{job_id}/{fmt}")
+def download(job_id: str, fmt: str):
+    path = f"{OUTPUT_DIR}/{job_id}.{fmt}"
+    if not os.path.exists(path):
+        return {"error": "file not ready"}
+    return FileResponse(path, filename=os.path.basename(path))
