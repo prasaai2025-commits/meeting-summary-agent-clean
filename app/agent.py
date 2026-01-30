@@ -1,35 +1,33 @@
 import os
 from app.transcribe import transcribe_audio
 from app.summarize import summarize_text
-from app.utils import save_docx, save_pdf
+from app.utils import generate_docx, generate_pdf
 
-OUTPUT_DIR = "outputs"
-STATUS_DIR = "status"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+BASE_DIR = os.path.dirname(__file__)
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+STATUS_DIR = os.path.join(BASE_DIR, "status")
 
-def run_agent(path: str, job_id: str):
-    status_file = f"{STATUS_DIR}/{job_id}.txt"
 
+def run_agent(file_path: str, job_id: str):
     try:
-        with open(status_file, "w") as f:
-            f.write("transcribing")
+        # 1️⃣ Transcribe
+        transcript = transcribe_audio(file_path)
 
-        transcript = transcribe_audio(path)
-
-        with open(status_file, "w") as f:
-            f.write("summarizing")
-
+        # 2️⃣ Summarize
         summary = summarize_text(transcript)
 
-        docx_path = f"{OUTPUT_DIR}/{job_id}.docx"
-        pdf_path = f"{OUTPUT_DIR}/{job_id}.pdf"
+        # 3️⃣ Generate files
+        docx_path = generate_docx(summary, job_id)
+        pdf_path = generate_pdf(summary, job_id)
 
-        save_docx(summary, docx_path)
-        save_pdf(summary, pdf_path)
-
-        with open(status_file, "w") as f:
-            f.write("completed")
+        # 4️⃣ WRITE FINAL STATUS
+        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+            f.write(str({
+                "status": "done",
+                "docx": f"/outputs/{os.path.basename(docx_path)}",
+                "pdf": f"/outputs/{os.path.basename(pdf_path)}"
+            }))
 
     except Exception as e:
-        with open(status_file, "w") as f:
-            f.write(f"error:{str(e)}")
+        with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
+            f.write(str({"status": "error"}))

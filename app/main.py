@@ -1,45 +1,54 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
-from fastapi.responses import JSONResponse, FileResponse
-import os, uuid
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
+import os, uuid, threading
+
 from app.agent import run_agent
 
 app = FastAPI()
 
-UPLOAD_DIR = "uploads"
-STATUS_DIR = "status"
-OUTPUT_DIR = "outputs"
+BASE_DIR = os.path.dirname(__file__)
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+STATUS_DIR = os.path.join(BASE_DIR, "status")
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(STATUS_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+for d in [UPLOAD_DIR, OUTPUT_DIR, STATUS_DIR]:
+    os.makedirs(d, exist_ok=True)
 
+
+# -------------------------
+# UPLOAD ENDPOINT
+# -------------------------
 @app.post("/upload")
-async def upload(file: UploadFile = File(...), bg: BackgroundTasks = None):
+def upload(file: UploadFile = File(...)):
     job_id = str(uuid.uuid4())
-    path = f"{UPLOAD_DIR}/{job_id}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, f"{job_id}_{file.filename}")
 
-    with open(path, "wb") as f:
-        f.write(await file.read())
+    with open(file_path, "wb") as f:
+        f.write(file.file.read())
 
+    # mark job as processing
     with open(f"{STATUS_DIR}/{job_id}.txt", "w") as f:
-        f.write("queued")
+        f.write("processing")
 
-    bg.add_task(run_agent, path, job_id)
+    # run agent in BACKGROUND THREAD
+    threading.Thread(
+        target=run_agent,
+        args=(file_path, job_id),
+        daemon=True
+    ).start()
 
-    return JSONResponse({"job_id": job_id})
+    return {"job_id": job_id}
 
 
+# -------------------------
+# STATUS ENDPOINT (YOU ASKED ABOUT THIS)
+# -------------------------
 @app.get("/status/{job_id}")
 def status(job_id: str):
-    p = f"{STATUS_DIR}/{job_id}.txt"
-    if not os.path.exists(p):
+    path = f"{STATUS_DIR}/{job_id}.txt"
+
+    if not os.path.exists(path):
         return {"status": "unknown"}
-    return {"status": open(p).read()}
 
-
-@app.get("/download/{job_id}/{fmt}")
-def download(job_id: str, fmt: str):
-    file_path = f"{OUTPUT_DIR}/{job_id}.{fmt}"
-    if not os.path.exists(file_path):
-        return JSONResponse({"error": "File not ready"}, status_code=404)
-    return FileResponse(file_path)
+    with open(path) as f:
+        return JSONResponse(content=eval(f.read()))
